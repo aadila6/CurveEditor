@@ -1,1 +1,2 @@
-# CurveEditor
+# CurveEditor Manual
+Abudureheman Adila
