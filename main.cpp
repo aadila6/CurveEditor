@@ -22,6 +22,15 @@
 #include <GL/glut.h>
 #endif
 
+#include "imgui.h"
+#include "imgui_impl_glut.h"
+#include "imgui_impl_opengl2.h"
+#ifdef __APPLE__
+    #include <GLUT/glut.h>
+#else
+    #include <GL/freeglut.h>
+#endif
+
 //other includes
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +46,9 @@
 
 
 
-
+static bool show_demo_window = true;
+static bool show_another_window = false;
+static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 /****set in main()****/
 //the number of pixels in the grid
 char *inputFileName;
@@ -53,7 +64,7 @@ float pixel_size;
 /*Window information*/
 int WIN_HEIGHT = 600;
 int WIN_WIDTH = 600;
-
+//
 void init();
 void idle();
 void display();
@@ -63,7 +74,9 @@ void key(unsigned char ch, int x, int y);
 void mouse(int button, int state, int x, int y);
 void motion(int x, int y);
 void check();
-
+void initGui(int argc, char **argv);
+void my_display_code();
+void glut_display_func();
 
 class Coord{
 public:
@@ -141,51 +154,58 @@ public:
 // void readinput(char *filename, std::vector<Polygon> &polygons);
 // void writeFile(char *filename, std::vector<Polygon> &polygons);
 bool* loadBuffer;
-// std::vector<Polygon> polygonList;
-// std::vector<Polygon> cPolygonList;
 std::vector<Coord> clicked;
 char lineMode;
-
 
 int main(int argc, char **argv)
 {
     // inputFileName = "testScene.txt";
     pixel_size = 1;
-    
-    /*Window information*/
-    // win_height = grid_height * pixel_size;
-    // win_width = grid_width * pixel_size;
-    
-    /*Set up glut functions*/
-    /** See https://www.opengl.org/resources/libraries/glut/spec3/spec3.html ***/
-    
-    //float translationX=0, translationY=0 , sFactor=1, cliponeX=0,cliponeY=0, cliptwoX=0, cliptwoY=0;
     grid_width = 1.0f; //500;
     grid_height = 1.0f; //500;
-    
-
     // readinput(inputFileName, polygonList);
-    //polygonList[0].printPolygon();
-    //polygonList[1].printPolygon();
-    //polygonList[2].printPolygon();
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    /*initialize variables, allocate memory, create buffers, etc. */
-    //create window of size (win_width x win_height
-    glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
-    //windown title is "glut demo"
-    glutCreateWindow("2D Curve Editor");
-//    clicked.push_back(Coord(100,100));
-    /*defined glut callback functions*/
-    glutDisplayFunc(display); //rendering calls here
-    
-    glutMouseFunc(mouse);     //mouse button events
-    glutMotionFunc(motion);   //mouse movement events
-    glutKeyboardFunc(key);    //Keyboard events
-    glutIdleFunc(idle);       //Function called while program is sitting "idle"
-    
-    //initialize opengl variables
-    init();
+//
+     glutInit(&argc, argv);
+     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+     /*initialize variables, allocate memory, create buffers, etc. */
+     //create window of size (win_width x win_height)
+     glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
+     //windown title is "glut demo"
+     glutCreateWindow("2D Curve Editor");
+//    defined glut callback functions
+     glutDisplayFunc(display); //rendering calls here
+     glutMouseFunc(mouse);     //mouse button events
+     glutMotionFunc(motion);   //mouse movement events
+     glutKeyboardFunc(key);    //Keyboard events
+     glutIdleFunc(idle);       //Function called while program is sitting "idle"
+     //initialize opengl variables
+     init();
+
+    #ifdef __FREEGLUT_EXT_H__
+        glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
+    #endif
+        glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE);
+        glutInitWindowSize(500, 500);
+        glutCreateWindow("Gui Window");
+    // Setup GLUT display function
+    // We will also call ImGui_ImplGLUT_InstallFuncs() to get all the other functions installed for us,
+    // otherwise it is possible to install our own functions and call the imgui_impl_glut.h functions ourselves.
+    glutDisplayFunc(glut_display_func);
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplGLUT_Init();
+    ImGui_ImplGLUT_InstallFuncs();
+    ImGui_ImplOpenGL2_Init();
+
     //start glut event loop
     glutMainLoop();
     return 0;
@@ -195,7 +215,7 @@ int main(int argc, char **argv)
 void init()
 {
     //set clear color (Default background to white)
-    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
     //glLineWidth(1.0f);
     //checks for OpenGL errors
     glMatrixMode(GL_PROJECTION);
@@ -203,6 +223,56 @@ void init()
     glOrtho(0, grid_width, 0, grid_height, -1, 1);
     check();
 }
+void my_display_code()
+{
+    // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+    if (show_demo_window)
+        ImGui::ShowDemoWindow(&show_demo_window);
+
+    // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+    {
+        static float f = 0.0f;
+        static int counter = 0;
+
+        ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+        ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+        ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+        ImGui::Checkbox("Another Window", &show_another_window);
+
+        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+        if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+            counter++;
+        ImGui::SameLine();
+        ImGui::Text("counter = %d", counter);
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::End();
+    }
+}
+void glut_display_func()
+{
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL2_NewFrame();
+    ImGui_ImplGLUT_NewFrame();
+
+    my_display_code();
+
+    // Rendering
+    ImGui::Render();
+    ImGuiIO& io = ImGui::GetIO();
+    glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
+    glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    glClear(GL_COLOR_BUFFER_BIT);
+    //glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context where shaders may be bound, but prefer using the GL3+ code.
+    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+
+    glutSwapBuffers();
+    glutPostRedisplay();
+}
+
 
 
 //called repeatedly when glut isn't doing anything else
@@ -335,9 +405,7 @@ void display()
         drawLine(clicked[i].x, clicked[i].y, clicked[i+1].x, clicked[i+1].y);
         draw_pix(clicked[i].x,clicked[i].y);
     }
-    // drawSplitLines();
-//    std::cout<<"Size of the Clicked Array is : "<<clicked.size()<<std::endl;
-//    drawLine(0.9f,0.0f,0.2f, 1.0f);
+
     glutSwapBuffers();
     check();
 }
@@ -364,11 +432,11 @@ void key(unsigned char ch, int x, int y)
         case 'b':
             lineMode = 'b';
             break;
-            
+
         case 'd':
             lineMode = 'd';
             break;
-            
+
         default:
             //prints out which key the user hit
             printf("User hit the \"%c\" key\n", ch);
@@ -412,10 +480,10 @@ void mouse(int button, int state, int x, int y)
         printf("BUTTON UP\n");
     else
         printf("BUTTON DOWN\n"); //button clicked
-    
+
     //redraw the scene after mouse click
     // drawLine(0,0,x/grid_width,y/grid_width);
-    
+
     glutPostRedisplay();
 }
 
