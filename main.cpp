@@ -62,14 +62,15 @@ float grid_height;
 float pixel_size;
 
 /*Window information*/
-int WIN_HEIGHT = 600;
-int WIN_WIDTH = 600;
+int WIN_HEIGHT = 500;
+int WIN_WIDTH = 500;
 //
 void init();
 void idle();
 void display();
 void draw_pix(int x, int y);
 void draw();
+void reshape(int width, int height);
 void key(unsigned char ch, int x, int y);
 void mouse(int button, int state, int x, int y);
 void motion(int x, int y);
@@ -91,7 +92,42 @@ public:
 };
 
 
+int mainWindow;
+int guiWindow;
+bool bezierMode;
+bool bSplineMode;
+bool addMode;
+bool modifyMode;
+bool deleteMode;
 
+class Curve{
+    public:
+        std::vector<Coord> vertices;
+        float u;
+        std::vector<float> uValues;
+        Coord centroid;
+        Curve(){
+            u=0;
+        }
+        Curve(std::vector<Coord> vert){
+            for(int i=0;i<vert.size();i++){
+                this->vertices.push_back(vert[i]);
+            }
+        }
+
+    void updateCentroid() {
+            float xtotal = 0, ytotal = 0;
+            int count = vertices.size();
+            for(int i = 0; i < count; i++){
+                xtotal += this->vertices[i].x;
+                ytotal += this->vertices[i].y;
+            }
+    this->centroid.x = xtotal/(float)(count);
+    this->centroid.y = ytotal/(float)(count);
+}
+        
+
+};
 // class Polygon {
 //     //Center of mass is 0 respect to polygon itself
 //     //But position vector is the centroid from the viewPort
@@ -155,14 +191,17 @@ public:
 // void writeFile(char *filename, std::vector<Polygon> &polygons);
 bool* loadBuffer;
 std::vector<Coord> clicked;
+std::vector<float> uValues;
 char lineMode;
-
+int gloT;
+std::vector<Curve> CurveList;
 int main(int argc, char **argv)
 {
     // inputFileName = "testScene.txt";
     pixel_size = 1;
     grid_width = 1.0f; //500;
     grid_height = 1.0f; //500;
+    gloT = 0.0;
     // readinput(inputFileName, polygonList);
 //
      glutInit(&argc, argv);
@@ -171,11 +210,12 @@ int main(int argc, char **argv)
      //create window of size (win_width x win_height)
      glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
      //windown title is "glut demo"
-     glutCreateWindow("2D Curve Editor");
+     mainWindow = glutCreateWindow("2D Curve Editor");
 //    defined glut callback functions
      glutDisplayFunc(display); //rendering calls here
      glutMouseFunc(mouse);     //mouse button events
      glutMotionFunc(motion);   //mouse movement events
+     glutReshapeFunc(reshape); //update GL on window size change
      glutKeyboardFunc(key);    //Keyboard events
      glutIdleFunc(idle);       //Function called while program is sitting "idle"
      //initialize opengl variables
@@ -186,7 +226,7 @@ int main(int argc, char **argv)
     #endif
         glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE);
         glutInitWindowSize(500, 500);
-        glutCreateWindow("Gui Window");
+        guiWindow = glutCreateWindow("Gui Window");
     // Setup GLUT display function
     // We will also call ImGui_ImplGLUT_InstallFuncs() to get all the other functions installed for us,
     // otherwise it is possible to install our own functions and call the imgui_impl_glut.h functions ourselves.
@@ -209,6 +249,11 @@ int main(int argc, char **argv)
     //start glut event loop
     glutMainLoop();
     return 0;
+    bezierMode = true;
+    bSplineMode = false;
+    addMode = false;
+    modifyMode = false;
+    deleteMode = false;
 }
 
 /*initialize gl stufff*/
@@ -223,35 +268,66 @@ void init()
     glOrtho(0, grid_width, 0, grid_height, -1, 1);
     check();
 }
+
 void my_display_code()
 {
     // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-    if (show_demo_window)
-        ImGui::ShowDemoWindow(&show_demo_window);
+    // if (show_demo_window)
+    //     ImGui::ShowDemoWindow(&show_demo_window);
 
     // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
     {
-        static float f = 0.0f;
+        static int f = 0;
+        static int f2 = 0;
         static int counter = 0;
 
-        ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+        ImGui::Begin("2D Curve Editing Gui");                          // Create a window called "Hello, world!" and append into it.
 
-        ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-        ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-        ImGui::Checkbox("Another Window", &show_another_window);
+        ImGui::Text("Please select one of below to operate");               // Display some text (you can use a format strings too)
+        ImGui::Checkbox("Bezir", &bezierMode);      // Edit bools storing our window open/close state
 
-        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-        ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+        static int e = 0;
+        ImGui::RadioButton("Add", &e, 0); ImGui::SameLine();
+        ImGui::RadioButton("Delete", &e, 1); ImGui::SameLine();
+        ImGui::RadioButton("Modify", &e, 2);
+        if(e == 0) addMode = true;
+        if(e == 1) deleteMode = true;
+        if(e == 2) modifyMode = true;
 
-        if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-            counter++;
-        ImGui::SameLine();
-        ImGui::Text("counter = %d", counter);
 
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        if (ImGui::SliderInt("n", &f, 0, 80))            // Edit 1 float using a slider from 0.0f to 1.0f
+        {
+            glutSetWindow(mainWindow);
+            glutPostRedisplay();
+            glutSetWindow(guiWindow);
+            gloT = f;
+        }
+
+        ImGui::Checkbox("B-Spline", &bSplineMode);
+        if (ImGui::SliderInt("u", &f2, 0, 1))            // Edit 2 float using a slider from 0.0f to 1.0f u0 - un
+        {
+            glutSetWindow(mainWindow);
+            glutPostRedisplay();
+            glutSetWindow(guiWindow);
+            // gloT = f2;
+        }
+        
+        // ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+        if (ImGui::Button("Clear All")){
+            clicked.clear();
+            glutSetWindow(mainWindow);
+            glutPostRedisplay();
+            glutSetWindow(guiWindow);
+        }                            // Buttons return true when clicked (most widgets return true when edited/activated)
+            
+        // ImGui::SameLine();
+        // ImGui::Text("counter = %d", counter);
+
         ImGui::End();
     }
 }
+
+
 void glut_display_func()
 {
     // Start the Dear ImGui frame
@@ -259,7 +335,6 @@ void glut_display_func()
     ImGui_ImplGLUT_NewFrame();
 
     my_display_code();
-
     // Rendering
     ImGui::Render();
     ImGuiIO& io = ImGui::GetIO();
@@ -334,6 +409,7 @@ void idle(){
 //         polygons.push_back(polygon);
 //         getline(inputFile, line);
 //     }
+
 //     inputFile.close();
 // }
 // void writeFile(char *filename,std::vector<Polygon> &polygons){
@@ -352,26 +428,42 @@ void idle(){
 //     }
 // }
 //Bezier
-double deCasteljau(int i, int n, double t){
-    if(n == 1) {
-        if(i == 0) {
-            return 1-t;
-        }
-        if(i == 1) {
-            return t;
-        }
-        
-        return 0;
-        
-    }
-    if(i < 0 || i > n) return 0; 
-    return (1 - t) * deCasteljau(i, n-1, t) + t * deCasteljau(i-1, n-1, t);
+Coord deCasteljau(std::vector<Coord> B , float u){
+    Coord q[B.size()];
+	int i, k;
+	for (i=0; i<B.size(); ++i) {
+		q[i].x = B[i].x;
+		q[i].y = B[i].y;
+	}
+	for (k=1; k<B.size(); ++k) {
+		for (i=0; i<(B.size()-k); ++i) {
+			q[i].x = (1.0-u)*q[i].x + u*q[i+1].x;
+			q[i].y = (1.0-u)*q[i].y + u*q[i+1].y;
+		}
+	}
+	return q[0];
 }
+
 
 //B-Spline
-void deBoor(){
+// Coord deBoor(int k, int n, float u, std::vector<Coord> B){
+//     Coord q[clicked.size()];
 
-}
+//     for (int i=0; i<B.size(); ++i) {
+// 		q[i].x = B[i].x;
+// 		q[i].y = B[i].y;
+// 	}
+//     int vertexCount = clicked.size();
+//     int inum = 0; //u is in which [uI,uI+1]
+//     for(int j=1; j< k-1; j++){
+//         for(int i = inum-(k-1); inum <inum - j; i++){
+//             q[i].x = (uValues[i+k]-u)/(uValues[i+k]-uValues[i+j]) * (q[i].x) + (u-uValues[i+j])/(uValues(i+k)-uValues[i+j])*q[i+1].x;
+//             q[i].y = (uValues[i+k]-u)/(uValues[i+k]-uValues[i+j]) * (q[i-1].y) + (u-uValues[i+j])/(uValues(i+k)-uValues[i+j])*q[i-1].y;
+//         }
+//     }
+
+
+// }
 
 void drawLine(float x1 ,float y1, float x2, float y2){
     glColor3f(0.41, 0.4, 0.4);
@@ -397,18 +489,34 @@ void display()
 {
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     glLoadIdentity();
-    // clicked.push_back(Coord(20,20));
-    for(int i = 0;i<clicked.size();i++){
-        // Coord vA = clicked[i];
-        // Coord vB = clicked[(i + 1) % clicked.size()];
-        // drawLine(vA.x/grid_width,vA.y/grid_width,vB.x/grid_width,vB.y/grid_width);
-        drawLine(clicked[i].x, clicked[i].y, clicked[i+1].x, clicked[i+1].y);
-        draw_pix(clicked[i].x,clicked[i].y);
+
+    std::vector<Coord> B;
+    float step , iq;
+    step = 1.0f / gloT;
+	for (iq = 0.0f; iq <= 1.0; iq += step) {
+		B.push_back(deCasteljau(clicked, iq));
+	}
+
+    if(clicked.size() > 1){
+        for(int i = 1; i < clicked.size(); i++){
+        Coord vA = clicked[i-1];
+        Coord vB = clicked[i];
+        drawLine(vA.x/grid_width,vA.y/grid_width,vB.x/grid_width,vB.y/grid_width);
+        }
     }
 
+    if(B.size()>1){
+        for(int i = 1; i < B.size(); i++){
+        Coord vA = B[i-1];
+        Coord vB = B[i];
+        drawLine(vA.x/grid_width,vA.y/grid_width,vB.x/grid_width,vB.y/grid_width);
+        }
+    }
+    B.clear();
     glutSwapBuffers();
     check();
 }
+    
 
 
 
@@ -429,13 +537,6 @@ void key(unsigned char ch, int x, int y)
 {
     switch (ch)
     {
-        case 'b':
-            lineMode = 'b';
-            break;
-
-        case 'd':
-            lineMode = 'd';
-            break;
 
         default:
             //prints out which key the user hit
@@ -446,7 +547,34 @@ void key(unsigned char ch, int x, int y)
     glutPostRedisplay();
 }
 
-
+void reshape(int width, int height)
+{
+    /*set up projection matrix to define the view port*/
+    //update the ne window width and height
+    WIN_WIDTH = width;
+    WIN_HEIGHT = height;
+    
+    //creates a rendering area across the window
+    glViewport(0, 0, width, height);
+    // up an orthogonal projection matrix so that
+    // the pixel space is mapped to the grid space
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, grid_width, 0, grid_height, -10, 10);
+    
+    //clear the modelview matrix
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    
+    //set pixel size based on width, if the aspect ratio
+    //changes this hack won't work as well
+    pixel_size = width / (float)grid_width;
+    
+    //set pixel size relative to the grid cell size
+    glPointSize(pixel_size);
+    //check for opengl errors
+    check();
+}
 //gets called when a mouse button is pressed
 void mouse(int button, int state, int x, int y)
 {
@@ -455,14 +583,26 @@ void mouse(int button, int state, int x, int y)
     //printf("MOUSE AT PIXEL: %d %d, GRID: %d %d\n", x, y, (int)(x / pixel_size), (int)((WIN_HEIGHT - y) / pixel_size));
     float normx = (float)x/WIN_WIDTH;
     float normy = (WIN_HEIGHT - (float)y) / WIN_HEIGHT;
+   
     std::cout << "Raw x and y: " << x << " " << y << std::endl;
     std::cout << "Normalized x and y: " << normx << " " << normy << std::endl;
     Coord newPoint(normx,normy);
-    if(clicked.size()==0){
+    if(addMode){
+        if(clicked.size()==0 ){
         clicked.push_back(newPoint);
+        uValues.push_back(0.5);
+        }
+        else if(clicked.back().x != newPoint.x && clicked.back().y != newPoint.y){
+        clicked.push_back(newPoint);
+        uValues.push_back(0.5);
+        }
     }
-    else if(clicked.back().x != newPoint.x && clicked.back().y != newPoint.y){
-        clicked.push_back(newPoint);
+    if(deleteMode){
+        //find the line & delete
+    }
+
+    if(modifyMode){
+        //change the 
     }
 
     switch (button)
@@ -486,11 +626,33 @@ void mouse(int button, int state, int x, int y)
 
     glutPostRedisplay();
 }
+int findNearest(std::vector<Coord> points, Coord cur){
+    float distance = 999;
+    int min = 0;
+    float tempdis;
+    for(int i=0;i<points.size();i++){
+        tempdis = sqrt(pow((points[i].x - cur.x),2) + pow((points[i].y - cur.y),2));
+        if(tempdis < distance){
+            distance = tempdis;
+            min = i;
+        }
+    }
+    return min;
 
+}
 //gets called when the curser moves accross the scene
 void motion(int x, int y)
 {
     //redraw the scene after mouse movement
+    //1-find nearest point
+    //2-set it to x,y
+    Coord cur((float)x/WIN_WIDTH,(WIN_HEIGHT - (float)y) / WIN_HEIGHT);
+    //Function finds the nearest vertex
+    int index = findNearest(clicked, cur);
+    if(modifyMode){
+        clicked[index].x = x;
+        clicked[index].y = y;
+    }
     glutPostRedisplay();
 }
 
