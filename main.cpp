@@ -195,6 +195,7 @@ std::vector<float> uValues;
 char lineMode;
 int gloT;
 std::vector<Curve> CurveList;
+int findNearest(std::vector<Coord> points, Coord cur);
 int main(int argc, char **argv)
 {
     // inputFileName = "testScene.txt";
@@ -284,18 +285,41 @@ void my_display_code()
         ImGui::Begin("2D Curve Editing Gui");                          // Create a window called "Hello, world!" and append into it.
 
         ImGui::Text("Please select one of below to operate");               // Display some text (you can use a format strings too)
-        ImGui::Checkbox("Bezir", &bezierMode);      // Edit bools storing our window open/close state
+        // ImGui::Checkbox("Bezir", &bezierMode);      // Edit bools storing our window open/close state
+        static int c = 0;
+        ImGui::RadioButton("Bezier", &c, 0); 
+        ImGui::RadioButton("B-Spline", &c, 1); 
+        if(c == 0){
+            bSplineMode = false;
+            bezierMode = true;
+        } 
+        if(c == 1){
+            bezierMode = false;
+            bSplineMode = true;
+        } 
 
         static int e = 0;
         ImGui::RadioButton("Add", &e, 0); ImGui::SameLine();
         ImGui::RadioButton("Delete", &e, 1); ImGui::SameLine();
         ImGui::RadioButton("Modify", &e, 2);
-        if(e == 0) addMode = true;
-        if(e == 1) deleteMode = true;
-        if(e == 2) modifyMode = true;
+        if(e == 0){
+            addMode = true;
+            deleteMode = false;
+            modifyMode = false;
+        } 
+        if(e == 1){
+            addMode = false;
+            deleteMode = true;
+            modifyMode = false;
+        } 
+        if(e == 2) {
+            addMode = false;
+            deleteMode = false;
+            modifyMode = true;
+        }
 
-
-        if (ImGui::SliderInt("n", &f, 0, 80))            // Edit 1 float using a slider from 0.0f to 1.0f
+        if(c == 0){
+            if (ImGui::SliderInt("n", &f, 0, 80))            // Edit 1 float using a slider from 0.0f to 1.0f
         {
             glutSetWindow(mainWindow);
             glutPostRedisplay();
@@ -303,14 +327,27 @@ void my_display_code()
             gloT = f;
         }
 
-        ImGui::Checkbox("B-Spline", &bSplineMode);
-        if (ImGui::SliderInt("u", &f2, 0, 1))            // Edit 2 float using a slider from 0.0f to 1.0f u0 - un
-        {
-            glutSetWindow(mainWindow);
-            glutPostRedisplay();
-            glutSetWindow(guiWindow);
-            // gloT = f2;
+        }else if(c ==1){
+            ImGui::SliderInt("u0", &f2, 0, 10);
+            ImGui::SliderInt("u1", &f2, 0, 10);
+            ImGui::SliderInt("u2", &f2, 0, 10);
+            ImGui::SliderInt("u3", &f2, 0, 10);
+
+        //     if (ImGui::SliderInt("u", &f2, 0, 10))            // Edit 2 float using a slider from 0.0f to 1.0f u0 - un
+        // {
+        //     glutSetWindow(mainWindow);
+        //     glutPostRedisplay();
+        //     glutSetWindow(guiWindow);
+        //     // gloT = f2;
+        // }
+
         }
+
+
+        
+
+        // ImGui::Checkbox("B-Spline", &bSplineMode);
+        
         
         // ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
         if (ImGui::Button("Clear All")){
@@ -599,10 +636,21 @@ void mouse(int button, int state, int x, int y)
     }
     if(deleteMode){
         //find the line & delete
+        int index = findNearest(clicked, newPoint);
+        std::cout<<"Deleted "<<clicked[index].x <<" "<<clicked[index].y<<std::endl;
+        clicked.erase(clicked.begin() + index);
+        
     }
 
     if(modifyMode){
         //change the 
+    //Function finds the nearest vertex
+        int index = findNearest(clicked, newPoint);
+        if(modifyMode){
+            std::cout<<"Modified "<<clicked[index].x <<" "<<clicked[index].y<<std::endl;
+            clicked[index].x = newPoint.x;
+            clicked[index].y = newPoint.y;
+        }
     }
 
     switch (button)
@@ -638,7 +686,6 @@ int findNearest(std::vector<Coord> points, Coord cur){
         }
     }
     return min;
-
 }
 //gets called when the curser moves accross the scene
 void motion(int x, int y)
@@ -646,13 +693,14 @@ void motion(int x, int y)
     //redraw the scene after mouse movement
     //1-find nearest point
     //2-set it to x,y
-    Coord cur((float)x/WIN_WIDTH,(WIN_HEIGHT - (float)y) / WIN_HEIGHT);
-    //Function finds the nearest vertex
-    int index = findNearest(clicked, cur);
-    if(modifyMode){
-        clicked[index].x = x;
-        clicked[index].y = y;
-    }
+    // Coord cur((float)x/WIN_WIDTH,(WIN_HEIGHT - (float)y) / WIN_HEIGHT);
+    // //Function finds the nearest vertex
+    // int index = findNearest(clicked, cur);
+    // if(modifyMode){
+    //     clicked[index].x = x;
+    //     clicked[index].y = y;
+        
+    // }
     glutPostRedisplay();
 }
 
