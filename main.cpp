@@ -99,17 +99,16 @@ bool bSplineMode;
 bool addMode;
 bool modifyMode;
 bool deleteMode;
+bool selectionMode;
 
 class Curve{
     public:
         std::vector<Coord> vertices;
-        float u;
-        std::vector<float> uValues;
+        float n;
+        // std::vector<float> uValues;
         Coord centroid;
-        Curve(){
-            u=0;
-        }
-        Curve(std::vector<Coord> vert){
+        Curve(std::vector<Coord> vert, float u){
+            this->n = u;
             for(int i=0;i<vert.size();i++){
                 this->vertices.push_back(vert[i]);
             }
@@ -125,7 +124,6 @@ class Curve{
     this->centroid.x = xtotal/(float)(count);
     this->centroid.y = ytotal/(float)(count);
 }
-        
 
 };
 // class Polygon {
@@ -191,11 +189,15 @@ class Curve{
 // void writeFile(char *filename, std::vector<Polygon> &polygons);
 bool* loadBuffer;
 std::vector<Coord> clicked;
+std::vector<Coord> Current;
 std::vector<float> uValues;
 char lineMode;
 int gloT;
+
 std::vector<Curve> CurveList;
+
 int findNearest(std::vector<Coord> points, Coord cur);
+int selectCurve(Coord cur);
 int main(int argc, char **argv)
 {
     // inputFileName = "testScene.txt";
@@ -255,6 +257,7 @@ int main(int argc, char **argv)
     addMode = false;
     modifyMode = false;
     deleteMode = false;
+    selectionMode = true;
 }
 
 /*initialize gl stufff*/
@@ -302,6 +305,7 @@ void my_display_code()
         ImGui::RadioButton("Add", &e, 0); ImGui::SameLine();
         ImGui::RadioButton("Delete", &e, 1); ImGui::SameLine();
         ImGui::RadioButton("Modify", &e, 2);
+        ImGui::RadioButton("Select Different Curve", &e, 3);
         if(e == 0){
             addMode = true;
             deleteMode = false;
@@ -316,6 +320,12 @@ void my_display_code()
             addMode = false;
             deleteMode = false;
             modifyMode = true;
+        }
+        if(e == 3){
+            addMode = false;
+            deleteMode = false;
+            modifyMode = false;
+            selectionMode = true;
         }
 
         if(c == 0){
@@ -340,13 +350,17 @@ void my_display_code()
         //     glutSetWindow(guiWindow);
         //     // gloT = f2;
         // }
-
         }
 
 
-        
-
-        // ImGui::Checkbox("B-Spline", &bSplineMode);
+        if (ImGui::Button("New Curve")){
+            Curve temp(clicked,1.0f/gloT);
+            CurveList.push_back(temp);
+            clicked.clear();
+            glutSetWindow(mainWindow);
+            glutPostRedisplay();
+            glutSetWindow(guiWindow);
+        }   
         
         
         // ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
@@ -509,7 +523,13 @@ void drawLine(float x1 ,float y1, float x2, float y2){
     glVertex2f(x2,y2);
     glEnd();
 }
-
+void drawLineC(float x1 ,float y1, float x2, float y2){
+    glColor3f(1.0, 0.0, 0.0);
+    glBegin(GL_LINES);
+    glVertex2f(x1,y1);
+    glVertex2f(x2,y2);
+    glEnd();
+}
 void drawSplitLines(){
     glColor3f(0.41, 0.4, 0.4);
     glBegin(GL_LINES);
@@ -530,15 +550,38 @@ void display()
     std::vector<Coord> B;
     float step , iq;
     step = 1.0f / gloT;
-	for (iq = 0.0f; iq <= 1.0; iq += step) {
-		B.push_back(deCasteljau(clicked, iq));
-	}
-
+	
     if(clicked.size() > 1){
+        for (iq = 0.0f; iq <= 1.0; iq += step) {
+		B.push_back(deCasteljau(clicked, iq));
+	    }
         for(int i = 1; i < clicked.size(); i++){
         Coord vA = clicked[i-1];
         Coord vB = clicked[i];
-        drawLine(vA.x/grid_width,vA.y/grid_width,vB.x/grid_width,vB.y/grid_width);
+        drawLineC(vA.x/grid_width,vA.y/grid_width,vB.x/grid_width,vB.y/grid_width);
+        }
+    }
+    float id;
+    if(CurveList.size()>0){
+        for(int j=0;j<CurveList.size();j++){
+            id = CurveList[j].n;
+            std::vector<Coord> D;
+            for (iq = 0.0f; iq <= 1.0; iq += step) {
+		        D.push_back(deCasteljau(CurveList[j].vertices, id));
+	        }
+            for(int i=1;i<CurveList[j].vertices.size();i++){
+                Coord vA = CurveList[j].vertices[i-1];
+                Coord vB = CurveList[j].vertices[i];
+                drawLine(vA.x/grid_width,vA.y/grid_width,vB.x/grid_width,vB.y/grid_width);
+            }
+            if(D.size()>1){
+                for(int i = 1; i < B.size(); i++){
+                Coord vA = D[i-1];
+                Coord vB = D[i];
+                drawLine(vA.x/grid_width,vA.y/grid_width,vB.x/grid_width,vB.y/grid_width);
+            }
+        }
+        D.clear();
         }
     }
 
@@ -620,7 +663,7 @@ void mouse(int button, int state, int x, int y)
     //printf("MOUSE AT PIXEL: %d %d, GRID: %d %d\n", x, y, (int)(x / pixel_size), (int)((WIN_HEIGHT - y) / pixel_size));
     float normx = (float)x/WIN_WIDTH;
     float normy = (WIN_HEIGHT - (float)y) / WIN_HEIGHT;
-   
+    int number = 0;
     std::cout << "Raw x and y: " << x << " " << y << std::endl;
     std::cout << "Normalized x and y: " << normx << " " << normy << std::endl;
     Coord newPoint(normx,normy);
@@ -641,7 +684,6 @@ void mouse(int button, int state, int x, int y)
         clicked.erase(clicked.begin() + index);
         
     }
-
     if(modifyMode){
         //change the 
     //Function finds the nearest vertex
@@ -652,6 +694,10 @@ void mouse(int button, int state, int x, int y)
             clicked[index].y = newPoint.y;
         }
     }
+    if(selectionMode){
+        number = selectCurve(newPoint);
+        std::cout<<"Selected Curve Number: "<<number<<std::endl; 
+    }
 
     switch (button)
     {
@@ -660,6 +706,8 @@ void mouse(int button, int state, int x, int y)
             break;
         case GLUT_RIGHT_BUTTON: //right button
             printf("RIGHT ");
+            //find the curve and return int number +store that to current curve and modify.
+            break;
         default:
             printf("UNKNOWN "); //any other mouse button
             break;
@@ -671,7 +719,6 @@ void mouse(int button, int state, int x, int y)
 
     //redraw the scene after mouse click
     // drawLine(0,0,x/grid_width,y/grid_width);
-
     glutPostRedisplay();
 }
 int findNearest(std::vector<Coord> points, Coord cur){
@@ -687,6 +734,23 @@ int findNearest(std::vector<Coord> points, Coord cur){
     }
     return min;
 }
+int selectCurve(Coord cur){
+    float distance = 999;
+    int min = 0;
+    int curveNum = 0;
+    float tempdis;
+    for(int n = 0; n<CurveList.size();n++){
+        for(int i=0;i<CurveList[n].vertices.size();i++){
+            tempdis = sqrt(pow((CurveList[n].vertices[i].x - cur.x),2) + pow((CurveList[n].vertices[i].y - cur.y),2));
+            if(tempdis < distance){
+                distance = tempdis;
+                min = i;
+                curveNum = n;
+            }
+        }
+    }
+    return curveNum;
+}
 //gets called when the curser moves accross the scene
 void motion(int x, int y)
 {
@@ -699,8 +763,15 @@ void motion(int x, int y)
     // if(modifyMode){
     //     clicked[index].x = x;
     //     clicked[index].y = y;
-        
     // }
+    // float normx = (float)x/WIN_WIDTH;
+    // float normy = (WIN_HEIGHT - (float)y) / WIN_HEIGHT;
+    // // std::cout << "Normalized x and y: " << normx << " " << normy << std::endl;
+    // Coord newPoint(normx,normy);
+    // int number = selectCurve(newPoint);
+
+    // std::cout<<"mouse at"<<x<<" "<<y<<std::endl;
+    std::cout<<std::flush;
     glutPostRedisplay();
 }
 
