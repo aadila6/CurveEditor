@@ -191,13 +191,11 @@ public:
 // void writeFile(char *filename, std::vector<Polygon> &polygons);
 bool *loadBuffer;
 std::vector<Coord> clicked;
-std::vector<Coord> Current;
 std::vector<float> uValues;
 char lineMode;
 int gloT;
 std::vector<Curve> CurveList;
 int activeNumber;
-
 int findNearest(std::vector<Coord> points, Coord cur);
 int selectCurve(Coord cur);
 int main(int argc, char **argv)
@@ -570,9 +568,9 @@ std::vector<Coord> deBoor(std::vector<Coord> points)
 {
     std::vector<float> knotVector;
     float t, uL, uR, uBar;
-    int k, n, I, segNum, temps;
-    k = 5;
-    std::vector<Coord> domain, temp;
+    int k, n, I, temps;
+    k = 2;
+    std::vector<Coord> temp;
     Coord p1, p2, p;
     Coord dL[points.size()];
     for (int i = 0; i < points.size(); ++i)
@@ -580,10 +578,9 @@ std::vector<Coord> deBoor(std::vector<Coord> points)
         dL[i].x = points[i].x;
         dL[i].y = points[i].y;
     }
-     n = points.size() - 1;
+    n = points.size() - 1;
     if (k < n + 2)
     {
-       
         // segNum = n - k;
         //initialize the knotVector
         for (int y = 0; y <= (n + k); y++)
@@ -616,26 +613,53 @@ std::vector<Coord> deBoor(std::vector<Coord> points)
                     {
                         std::cout << "diff is 0!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
                     }
-
                     float one = float(uR - uBar) / diff;
                     float two = float(uBar - uL) / diff;
                     dL[i].x = one * dL[i].x + two * dL[i + 1].x;
                     dL[i].y = one * dL[i].y + two * dL[i + 1].y;
                     std::cout << "Debug DL :" << j << "  " << i << std::endl;
                     std::cout << "Debug Value x and Y :" << dL[i].x << "  " << dL[i].y << std::endl;
-                    draw_pix(dL[i].x / grid_width, dL[i].y / grid_width);
-                    if(i == I){
-                        temps = i;
-                    }
+//                    draw_pix(dL[i].x / grid_width, dL[i].y / grid_width);
+                    
                 }
             }
         }
-        p = dL[k - 1];
+        p = dL[I-k-1];
         // draw_pix(p.x/grid_width , p.y/grid_width);
         temp.push_back(p);
     }
     return temp;
 }
+
+float Bspline(int index, int order, float u)
+{
+   float coef1, coef2;
+   if ( order == 1 )
+   {
+      if ( index == 0 ) if ( ( knots[index] <= u ) && ( u <= knots[index+1] ) ) return 1.0;
+      if ( ( knots[index] < u ) && ( u <= knots[index+1] ) ) return 1.0;
+      else return 0.0;
+   }
+   else
+   {
+      if ( knots[index + order - 1] == knots[index] )
+      {
+         if ( u == knots[index] ) coef1 = 1;
+         else coef1 = 0;
+      }
+      else coef1 = (u - knots[index])/(knots[index + order - 1] - knots[index]);
+
+      if ( knots[index + order] == knots[index+1] )
+      {
+         if ( u == knots[index + order] ) coef2 = 1;
+         else coef2 = 0;
+      }
+      else coef2 = (knots[index + order] - u)/(knots[index + order] - knots[index+1]);
+        
+      return ( coef1 * Bspline(index, order-1, u) + coef2 * Bspline(index+1,order-1 ,u));
+   }
+}
+
 
 void drawLine(float x1, float y1, float x2, float y2)
 {
@@ -782,7 +806,12 @@ void key(unsigned char ch, int x, int y)
 {
     switch (ch)
     {
-
+    case ' ':
+        if (activeNumber < CurveList.size()) activeNumber++;
+        else activeNumber = 0;
+        glutPostRedisplay();
+        break;
+            
     default:
         //prints out which key the user hit
         printf("User hit the \"%c\" key\n", ch);
@@ -905,14 +934,12 @@ void mouse(int button, int state, int x, int y)
     // drawLine(0,0,x/grid_width,y/grid_width);
     if (selectionMode)
     {
-        number = selectCurve(newPoint);
-        // if(number !=activeNumber){
-
-        // }
-        std::cout << "Selected Curve Number: " << number << std::endl;
-        activeNumber = number;
-        switchCurves(number);
-        std::cout << "after switch!!!! " << std::endl;
+//        number = selectCurve(newPoint);
+//
+//        std::cout << "Selected Curve Number: " << number << std::endl;
+//        activeNumber = number;
+//        switchCurves(number);
+//        std::cout << "after switch!!!! " << std::endl;
         //pop selected and put it in clicked and modify, then later push back.
     }
     glutPostRedisplay();
