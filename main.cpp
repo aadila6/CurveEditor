@@ -128,70 +128,11 @@ public:
         this->centroid.y = ytotal / (float)(count);
     }
 };
-// class Polygon {
-//     //Center of mass is 0 respect to polygon itself
-//     //But position vector is the centroid from the viewPort
-// public:
-//     int count;
-//     std::vector<float> position;
-//     int edgeCount;
-//     Coord transVec;
-//     float angle;
-//     float scale;
-//     std::vector<std::vector<float>> vertices;
-//     std::vector<std::vector<int>> edges;
 
-// public:
-//     void printPolygon();
-//     void updateCentroid();
-//     Polygon(){};
-
-//     Polygon(std::vector<Coord> &vert, std::vector <ECoord> &edges) {
-//         float xtotal = 0, ytotal = 0;
-//         this -> count = vert.size();
-//         this ->edgeCount = edges.size();
-//         for(int i = 0; i < vert.size(); i++){
-//             vertices.push_back(std::vector<float>{vert[i].x, vert[i].y, vert[i].z});
-//         }
-//         for(int j=0; j<edges.size();j++){
-//             this->edges.push_back(std::vector<int>{edges[j].x, edges[j].y});
-//         }
-//         this -> updateCentroid();
-
-//         transVec.x = 0.0;
-//         transVec.y = 0.0;
-//         transVec.z = 0.0;
-//         angle = 0.0;
-//         scale = 1.0;
-//     }
-// };
-
-// void Polygon::printPolygon() {
-//     std::cout<<"numVertices: "<<this->count<<std::endl;
-//     for(int i = 0; i < this->count; i++) {
-//         std::cout<<"x: "<<(this->vertices[i])[0]<<" y: "<<(this->vertices[i])[1]<<" z: "<<(this->vertices[i])[2]<<std::endl;
-//     }
-//     //  for(int j = 0; j < this->edgeCount; j++) {
-//     //     std::cout<<"Edges "<<(this->edges[j])[0]<<" and "<<(this->edges[j])[1]<<std::endl;
-//     // }
-//     std::cout<<std::endl;
-// }
-
-// void Polygon::updateCentroid() {
-//     float xtotal = 0, ytotal = 0, ztotal=0;
-//     for(int i = 0; i < this->count; i++){
-//         xtotal += this->vertices[i][0];
-//         ytotal += this->vertices[i][1];
-//         ztotal += this->vertices[i][2];
-//     }
-//     this->position = {xtotal/(float)(this->count), ytotal/(float)(this->count),  ztotal/(float)(this->count)};
-// }
-
-// void readinput(char *filename, std::vector<Polygon> &polygons);
-// void writeFile(char *filename, std::vector<Polygon> &polygons);
-bool *loadBuffer;
+Curve *ptr;
 std::vector<Coord> clicked;
 std::vector<float> uValues;
+bool started;
 char lineMode;
 int gloT;
 std::vector<Curve> CurveList;
@@ -200,7 +141,7 @@ int findNearest(std::vector<Coord> points, Coord cur);
 int selectCurve(Coord cur);
 int main(int argc, char **argv)
 {
-    // inputFileName = "testScene.txt";
+    // Initialization
     pixel_size = 1;
     grid_width = 1.0f;  //500;
     grid_height = 1.0f; //500;
@@ -210,12 +151,15 @@ int main(int argc, char **argv)
     addMode = false;
     modifyMode = false;
     deleteMode = false;
-    selectionMode = false;
+    // selectionMode = false;
     activeNumber = 0;
+    started = true;
+    //temp define list[0]
+    // clicked.push_back(Coord(0,0));
+    // Curve temp(clicked, gloT);
+    // CurveList.push_back(temp);
+    // *ptr = CurveList[0];
 
-    // CurveList.push_back(clicked);
-    // readinput(inputFileName, polygonList);
-    //
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     /*initialize variables, allocate memory, create buffers, etc. */
@@ -313,7 +257,6 @@ void my_display_code()
         ImGui::RadioButton("Delete", &e, 1);
         ImGui::SameLine();
         ImGui::RadioButton("Modify", &e, 2);
-        ImGui::RadioButton("Select Different Curve", &e, 3);
         if (e == 0)
         {
             addMode = true;
@@ -332,19 +275,6 @@ void my_display_code()
             deleteMode = false;
             modifyMode = true;
         }
-        if (e == 3)
-        {
-            addMode = false;
-            deleteMode = false;
-            modifyMode = false;
-            selectionMode = true;
-            if (clicked.size() > 0)
-            {
-                Curve temp(clicked, 1.0f / gloT);
-                CurveList.push_back(temp);
-                clicked.clear();
-            }
-        }
 
         if (c == 0)
         {
@@ -358,6 +288,7 @@ void my_display_code()
         }
         else if (c == 1)
         {
+            //gui slider for different u values.
             ImGui::SliderInt("u0", &f2, 0, 10);
             ImGui::SliderInt("u1", &f2, 0, 10);
             ImGui::SliderInt("u2", &f2, 0, 10);
@@ -376,6 +307,8 @@ void my_display_code()
         {
             Curve temp(clicked, gloT);
             CurveList.push_back(temp);
+            // *ptr = CurveList[CurveList.size()];
+
             clicked.clear();
             glutSetWindow(mainWindow);
             glutPostRedisplay();
@@ -432,77 +365,7 @@ void idle()
     //redraw the scene over and over again
     glutPostRedisplay();
 }
-// void readinput(char *filename, std::vector<Polygon> &polygons){
-//     std::ifstream inputFile;
-//     inputFile.open(filename);
-//     std::string line;
-//     int count;
-//     int edgeCount;
-//     inputFile >> count;
-//     getline(inputFile, line); //line 1
-//     getline(inputFile, line); //point count
-//     for (int i=0; i< count; i++){
-//         int num;
-//         std::vector <Coord> vertices;
-//         std::vector <ECoord> edges;
-//         inputFile >> num;
-//         getline(inputFile, line);
-//         for (int j=0; j<num; j++){
-//             float x, y, z;
-//             std::string inputX, inputY, inputZ;
-//             getline(inputFile, line);
-//             std :: istringstream record(line);
-//             getline(record, inputX, ' ');
-//             getline(record, inputY, ' ');
-//             getline(record, inputZ);
-//             x = std::stof(inputX);
-//             y = std::stof(inputY);
-//             z = std::stof(inputZ);
-//             Coord point;
-//             point.x = x;
-//             point.y = y;
-//             point.z = z;
-//             vertices.push_back(point);
-//         }
-//         std :: string input;
-//         getline(inputFile, line);
-//         edgeCount = std::stoi(line);
-//         for (int j=0; j<edgeCount; j++){
-//             int x, y;
-//             std :: string inputX, inputY;
-//             getline(inputFile, line);
-//             std :: istringstream record(line);
-//             getline(record, inputX, ' ');
-//             getline(record, inputY);
-//             x = std::stoi(inputX);
-//             y = std::stoi(inputY);
-//             ECoord point;
-//             point.x = x;
-//             point.y = y;
-//             edges.push_back(point);
-//         }
-//         Polygon polygon(vertices, edges);
-//         polygons.push_back(polygon);
-//         getline(inputFile, line);
-//     }
 
-//     inputFile.close();
-// }
-// void writeFile(char *filename,std::vector<Polygon> &polygons){
-//     std::ofstream outputFile(filename);
-//     outputFile << polygons.size() << "\n\n";
-//     for (int i = 0; i<polygons.size();i++) {
-//         outputFile << polygons[i].count << std::endl;
-//         for(int j = 0; j<polygons[i].count;j++) {
-//             outputFile << polygons[i].vertices[j][0] << ' ' << polygons[i].vertices[j][1] << ' '<< polygons[i].vertices[j][2]<< std::endl;
-//         }
-//         outputFile << polygons[i].edgeCount<< std::endl;
-//         for(int k = 0; k<polygons[i].edgeCount;k++) {
-//             outputFile << polygons[i].edges[k][0] << ' ' << polygons[i].edges[k][1]<<std::endl;
-//         }
-//         outputFile << std::endl;
-//     }
-// }
 //Bezier
 Coord deCasteljau(std::vector<Coord> B, float u)
 {
@@ -526,50 +389,28 @@ Coord deCasteljau(std::vector<Coord> B, float u)
 
 int computeSegIndex(float ubar, std::vector<float> knotVector)
 {
-    int num = -1;
+    
     for (int i = 0; i < knotVector.size(); i++)
     {
-        if (ubar < knotVector[i])
+        if (ubar == knotVector[i])
         {
-            num = i;
-            break;
+            return i;
+            
+        }else if(ubar < knotVector[i]){
+            return i-1;
         }
     }
-    return num;
-}
-std::vector<Coord> getDomain(int i, std::vector<Coord> points)
-{
-    std::vector<Coord> temp;
-    int dIndex = i - 10 + 1;
-    for (int j = 0; j < 10; j++)
-    {
-        temp.push_back(points[dIndex + j]);
-    }
-    return temp;
+    
 }
 
-Coord interpolate(Coord p1, Coord p2, float uL, float uBar, float uR)
-{
-    Coord temp;
-    float one, two, diff;
-    diff = uR - uL;
-    if (diff == 0)
-    {
-        std::cout << "0 denomenator in interpolate" << std::endl;
-    }
-    one = (uR - uBar) / diff;
-    two = (uBar - uL) / diff;
-    temp.x = one * p1.x + two * p2.x;
-    temp.y = two * p2.y + one * p1.y;
-    return temp;
-}
+
 
 std::vector<Coord> deBoor(std::vector<Coord> points)
 {
     std::vector<float> knotVector;
-    float t, uL, uR, uBar;
+    float t, uL, uR, uBar, ddiff;
     int k, n, I, temps;
-    k = 2;
+    k = 4;
     std::vector<Coord> temp;
     Coord p1, p2, p;
     Coord dL[points.size()];
@@ -579,85 +420,51 @@ std::vector<Coord> deBoor(std::vector<Coord> points)
         dL[i].y = points[i].y;
     }
     n = points.size() - 1;
-    if (k < n + 2)
+    for (int y = 0; y <= (n + k); y++)
     {
-        // segNum = n - k;
-        //initialize the knotVector
-        for (int y = 0; y <= (n + k); y++)
-        {
-            knotVector.push_back(float(y));
-        }
-        int uIndex = k - 1;
+        knotVector.push_back(float(y));
+    }
+   
+    ddiff = knotVector[n + 1] - knotVector[k - 1];
+    temp.clear();
 
-        for (int res = 0; res < 10; res++)
+    for (int res = 0; res < 10; res++)
+    {
+        std::cout << "**************************" << std::endl;
+         std::cout<<"knotVector Size: "<<knotVector.size()<<std::endl;
+        t = float(res) / 10;
+        uBar = (ddiff * t) + knotVector[k - 1];
+        // std::cout << "uBar: " << uBar << std::endl;
+        
+        I = computeSegIndex(uBar, knotVector);
+        std::cout << "I: " << I << std::endl;
+        for (int j = 1; j <= k - 1; j++)
         {
-            std::cout << "**************************" << std::endl;
-            // int length = n+1 - (k-1);
-            //if k<n+1 then no curve
-            t = float(res) / 10;
-            uBar = (1 + t) * knotVector[k - 1];
-            //ubar's index can't exceed n+1;
-            std::cout << "uBar: " << uBar << std::endl;
-            I = computeSegIndex(uBar, knotVector);
-            std::cout << "I: " << I << std::endl;
-            for (int j = 1; j <= k - 1; j++)
+            for (int i = I - (k - 1); i <= I - j; i++)
             {
-                for (int i = I - (k - 1); i <= I - j; i++)
+                uL = knotVector[i + j];
+                uR = knotVector[i + k];
+                std::cout << "uL: " << uL <<  std::endl;
+                std::cout << "uBar: " << uBar << std::endl;
+                std::cout << "uR: " << uR <<  std::endl;
+                float diff = uR - uL;
+                if (diff == 0)
                 {
-                    uL = knotVector[i + j];
-                    uR = knotVector[i + k];
-                    std::cout << "uL: " << uL << std::endl;
-                    std::cout << "uR: " << uR << std::endl;
-                    float diff = uR - uL;
-                    if (diff == 0)
-                    {
-                        std::cout << "diff is 0!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-                    }
-                    float one = float(uR - uBar) / diff;
-                    float two = float(uBar - uL) / diff;
-                    dL[i].x = one * dL[i].x + two * dL[i + 1].x;
-                    dL[i].y = one * dL[i].y + two * dL[i + 1].y;
-                    std::cout << "Debug DL :" << j << "  " << i << std::endl;
-                    std::cout << "Debug Value x and Y :" << dL[i].x << "  " << dL[i].y << std::endl;
-//                    draw_pix(dL[i].x / grid_width, dL[i].y / grid_width);
-                    
+                    std::cout << "diff is 0!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
                 }
+                float one = float(uR - uBar) / diff;
+                float two = float(uBar - uL) / diff;
+                dL[i].x = one * dL[i].x + two * dL[i + 1].x;
+                dL[i].y = one * dL[i].y + two * dL[i + 1].y;
+                std::cout << "Debug DL :" << j << "  " << i << std::endl;
+                // std::cout << "Debug Value x and Y :" << dL[i].x << "  " << dL[i].y << std::endl;
             }
         }
-        p = dL[I-k-1];
-        // draw_pix(p.x/grid_width , p.y/grid_width);
+        p = dL[I - (k - 1)]; //I-k-1=0
+        std::cout << "final p value pushed : " << p.x << " " << p.y << std::endl;
         temp.push_back(p);
     }
     return temp;
-}
-
-float Bspline(int index, int order, float u)
-{
-   float coef1, coef2;
-   if ( order == 1 )
-   {
-      if ( index == 0 ) if ( ( knots[index] <= u ) && ( u <= knots[index+1] ) ) return 1.0;
-      if ( ( knots[index] < u ) && ( u <= knots[index+1] ) ) return 1.0;
-      else return 0.0;
-   }
-   else
-   {
-      if ( knots[index + order - 1] == knots[index] )
-      {
-         if ( u == knots[index] ) coef1 = 1;
-         else coef1 = 0;
-      }
-      else coef1 = (u - knots[index])/(knots[index + order - 1] - knots[index]);
-
-      if ( knots[index + order] == knots[index+1] )
-      {
-         if ( u == knots[index + order] ) coef2 = 1;
-         else coef2 = 0;
-      }
-      else coef2 = (knots[index + order] - u)/(knots[index + order] - knots[index+1]);
-        
-      return ( coef1 * Bspline(index, order-1, u) + coef2 * Bspline(index+1,order-1 ,u));
-   }
 }
 
 
@@ -685,7 +492,14 @@ void drawLineB(float x1, float y1, float x2, float y2)
     glVertex2f(x2, y2);
     glEnd();
 }
-
+void drawLineOrange(float x1, float y1, float x2, float y2)
+{
+    glColor3f(1.0, 0.5, 0.5);
+    glBegin(GL_LINES);
+    glVertex2f(x1, y1);
+    glVertex2f(x2, y2);
+    glEnd();
+}
 void drawSplitLines()
 {
     glColor3f(0.41, 0.4, 0.4);
@@ -715,12 +529,11 @@ void display()
     std::vector<Coord> spline;
     float step, iq;
     step = 1.0f / gloT;
-
     if (clicked.size() > 1)
     {
         spline = deBoor(clicked);
-        std::cout << "deBoor size : " << spline.size() << std::endl;
-        printOut(spline);
+        //         // std::cout << "deBoor size : " << spline.size() << std::endl;
+        //         // printOut(spline);
         for (iq = 0.0f; iq <= 1.0; iq += step)
         {
             B.push_back(deCasteljau(clicked, iq));
@@ -777,19 +590,104 @@ void display()
             drawLineC(vA.x / grid_width, vA.y / grid_width, vB.x / grid_width, vB.y / grid_width);
         }
     }
+
     if (spline.size() > 1)
     {
         for (int i = 1; i < spline.size(); i++)
         {
             Coord vA = spline[i - 1];
             Coord vB = spline[i];
-            drawLineC(vA.x / grid_width, vA.y / grid_width, vB.x / grid_width, vB.y / grid_width);
+            drawLineOrange(vA.x / grid_width, vA.y / grid_width, vB.x / grid_width, vB.y / grid_width);
         }
     }
     B.clear();
     glutSwapBuffers();
     check();
 }
+
+//display with ptr to curves
+// void display()
+// {
+//     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+//     glLoadIdentity();
+
+//     std::vector<Coord> B;
+//     std::vector<Coord> spline;
+//     float step, iq;
+//     step = 1.0f / gloT;
+//     if (ptr->vertices.size() > 1)
+//     {
+//         // spline = deBoor(clicked);
+//         // std::cout << "deBoor size : " << spline.size() << std::endl;
+//         // printOut(spline);
+//         for (iq = 0.0f; iq <= 1.0; iq += step)
+//         {
+//             B.push_back(deCasteljau(ptr->vertices, iq));
+//         }
+//         for (int i = 1; i < ptr->vertices.size(); i++)
+//         {
+//             Coord vA = ptr->vertices[i - 1];
+//             Coord vB = ptr->vertices[i];
+//             drawLineB(vA.x / grid_width, vA.y / grid_width, vB.x / grid_width, vB.y / grid_width);
+//         }
+//     }
+//     float id;
+//     if (CurveList.size() > 0)
+//     {
+//         for (int j = 0; j < CurveList.size(); j++)
+//         {
+//             if (CurveList[j].vertices.size() > 0)
+//             {
+//                 id = CurveList[j].n;
+//                 // std::cout << "id : " << id << std::endl;
+//                 float steps = 1.0f / id;
+//                 std::vector<Coord> D;
+//                 for (iq = 0.0f; iq <= 1.0; iq += steps)
+//                 {
+//                     D.push_back(deCasteljau(CurveList[j].vertices, iq));
+//                 }
+//                 // std::cout<<"D size : "<<D.size()<<std::end;
+//                 for (int i = 1; i < CurveList[j].vertices.size(); i++)
+//                 {
+//                     Coord vA = CurveList[j].vertices[i - 1];
+//                     Coord vB = CurveList[j].vertices[i];
+//                     drawLine(vA.x / grid_width, vA.y / grid_width, vB.x / grid_width, vB.y / grid_width);
+//                 }
+//                 if (D.size() > 1)
+//                 {
+//                     for (int i = 1; i < D.size(); i++)
+//                     {
+//                         Coord cA = D[i - 1];
+//                         Coord cB = D[i];
+//                         drawLineC(cA.x / grid_width, cA.y / grid_width, cB.x / grid_width, cB.y / grid_width);
+//                     }
+//                 }
+//                 D.clear();
+//             }
+//         }
+//     }
+//     if (B.size() > 1)
+//     {
+//         for (int i = 1; i < B.size(); i++)
+//         {
+//             Coord vA = B[i - 1];
+//             Coord vB = B[i];
+//             drawLineC(vA.x / grid_width, vA.y / grid_width, vB.x / grid_width, vB.y / grid_width);
+//         }
+//     }
+//     if (spline.size() > 1)
+//     {
+//         for (int i = 1; i < spline.size(); i++)
+//         {
+//             Coord vA = spline[i - 1];
+//             Coord vB = spline[i];
+//             drawLineC(vA.x / grid_width, vA.y / grid_width, vB.x / grid_width, vB.y / grid_width);
+//         }
+//     }
+//     B.clear();
+//     glutSwapBuffers();
+//     check();
+// }
 
 //Draws a single "pixel" given the current grid size
 //don't change anything in this for project 1
@@ -807,11 +705,14 @@ void key(unsigned char ch, int x, int y)
     switch (ch)
     {
     case ' ':
-        if (activeNumber < CurveList.size()) activeNumber++;
-        else activeNumber = 0;
+        if (activeNumber < CurveList.size())
+            activeNumber++;
+        else
+            activeNumber = 0;
+        // *ptr = CurveList[activeNumber];
+        std::cout << "Changed ptr to curve number " << activeNumber << std::endl;
         glutPostRedisplay();
         break;
-            
     default:
         //prints out which key the user hit
         printf("User hit the \"%c\" key\n", ch);
@@ -849,25 +750,25 @@ void reshape(int width, int height)
     //check for opengl errors
     check();
 }
-void switchCurves(int number)
-{
-    std::vector<Coord> temp;
-    for (int i = 0; i < CurveList[number].vertices.size(); i++)
-    {
-        temp.push_back(CurveList[number].vertices[i]);
-    }
-    std::cout << "after temp cp: " << temp.size() << std::endl;
-    std::cout << "CurveList size: " << CurveList.size() << std::endl;
-    int tempN = CurveList[number].n;
-    CurveList.erase(CurveList.begin() + number);
-    std::cout << "CurveList size after: " << CurveList.size() << std::endl;
-    gloT = tempN;
-    clicked.clear();
-    for (int k = 0; k < temp.size(); k++)
-    {
-        clicked.push_back(temp[k]);
-    }
-}
+// void switchCurves(int number)
+// {
+//     std::vector<Coord> temp;
+//     for (int i = 0; i < CurveList[number].vertices.size(); i++)
+//     {
+//         temp.push_back(CurveList[number].vertices[i]);
+//     }
+//     std::cout << "after temp cp: " << temp.size() << std::endl;
+//     std::cout << "CurveList size: " << CurveList.size() << std::endl;
+//     int tempN = CurveList[number].n;
+//     CurveList.erase(CurveList.begin() + number);
+//     std::cout << "CurveList size after: " << CurveList.size() << std::endl;
+//     gloT = tempN;
+//     clicked.clear();
+//     for (int k = 0; k < temp.size(); k++)
+//     {
+//         clicked.push_back(temp[k]);
+//     }
+// }
 //gets called when a mouse button is pressed
 void mouse(int button, int state, int x, int y)
 {
@@ -885,12 +786,10 @@ void mouse(int button, int state, int x, int y)
         if (clicked.size() == 0)
         {
             clicked.push_back(newPoint);
-            // uValues.push_back(0.5);
         }
         else if (clicked.back().x != newPoint.x && clicked.back().y != newPoint.y)
         {
             clicked.push_back(newPoint);
-            // uValues.push_back(0.5);
         }
     }
     if (deleteMode)
@@ -911,6 +810,35 @@ void mouse(int button, int state, int x, int y)
             clicked[index].y = newPoint.y;
         }
     }
+    // if (addMode)
+    // {
+    //     if (ptr->vertices.size() == 0)
+    //     {
+    //         clicked.push_back(newPoint);
+    //     }
+    //     else if (ptr->vertices.back().x != newPoint.x && ptr->vertices.back().y != newPoint.y)
+    //     {
+    //         ptr->vertices.push_back(newPoint);
+    //     }
+    // }
+    // if (deleteMode)
+    // {
+    //     //find the line & delete
+    //     int index = findNearest(ptr->vertices, newPoint);
+    //     std::cout << "Deleted " << ptr->vertices[index].x << " " << ptr->vertices[index].y << std::endl;
+    //     ptr->vertices.erase(ptr->vertices.begin() + index);
+    // }
+    // if (modifyMode)
+    // {
+    //     //Function finds the nearest vertex
+    //     int index = findNearest(ptr->vertices, newPoint);
+    //     if (modifyMode)
+    //     {
+    //         std::cout << "Modified " << ptr->vertices[index].x << " " << ptr->vertices[index].y << std::endl;
+    //         ptr->vertices[index].x = newPoint.x;
+    //         ptr->vertices[index].y = newPoint.y;
+    //     }
+    // }
 
     switch (button)
     {
@@ -934,12 +862,12 @@ void mouse(int button, int state, int x, int y)
     // drawLine(0,0,x/grid_width,y/grid_width);
     if (selectionMode)
     {
-//        number = selectCurve(newPoint);
-//
-//        std::cout << "Selected Curve Number: " << number << std::endl;
-//        activeNumber = number;
-//        switchCurves(number);
-//        std::cout << "after switch!!!! " << std::endl;
+        //        number = selectCurve(newPoint);
+        //
+        //        std::cout << "Selected Curve Number: " << number << std::endl;
+        //        activeNumber = number;
+        //        switchCurves(number);
+        //        std::cout << "after switch!!!! " << std::endl;
         //pop selected and put it in clicked and modify, then later push back.
     }
     glutPostRedisplay();
