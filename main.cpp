@@ -1,9 +1,6 @@
 /*
- * Abudureheman Adila
- * ECS 175 Project #2
- * UC Davis, Fall 2019
+ * Adila Abudureheman
  */
-
 #ifdef WIN32
 #include <windows.h>
 #include <GL/gl.h>
@@ -76,6 +73,7 @@ void initGui(int argc, char **argv);
 void my_display_code();
 void glut_display_func();
 
+/* Screen space Coordinates */
 class Coord
 {
 public:
@@ -100,6 +98,8 @@ bool deleteMode;
 bool selectionMode;
 int gRes;
 int gKvalue;
+
+/* Curve Definition with vector of coords */
 class Curve
 {
 public:
@@ -143,7 +143,7 @@ void resetCurves();
 int selectCurve(Coord cur);
 int main(int argc, char **argv)
 {
-    // Initialization
+    // Initialization for global variables
     pixel_size = 1;
     grid_width = 1.0f;  //500;
     grid_height = 1.0f; //500;
@@ -155,23 +155,17 @@ int main(int argc, char **argv)
     addMode = false;
     modifyMode = false;
     deleteMode = false;
-    // selectionMode = false;
     activeNumber = 0;
    
-    //temp define list[0]
-    // clicked.push_back(Coord(0,0));
-    // Curve temp(clicked, gloT);
-    // CurveList.push_back(temp);
-    // *ptr = CurveList[0];
     resetCurves();
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    /*initialize variables, allocate memory, create buffers, etc. */
+    /* initialize variables, allocate memory, create buffers, etc. */
     //create window of size (win_width x win_height)
     glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
     //windown title is "glut demo"
     mainWindow = glutCreateWindow("2D Curve Editor");
-    //    defined glut callback functions
+    //defined glut callback functions
     glutDisplayFunc(display); //rendering calls here
     glutMouseFunc(mouse);     //mouse button events
     glutMotionFunc(motion);   //mouse movement events
@@ -315,11 +309,9 @@ void my_display_code()
         }
         if (ImGui::Button("New Curve"))
         {
-            //Curve temp(clicked, gloT);
             CurveList.push_back(Curve(std::vector<Coord>(), gloT));
             clicked = &CurveList.back();
             activeNumber = CurveList.size();
-            // *ptr = CurveList[CurveList.size()];
 
             glutSetWindow(mainWindow);
             glutPostRedisplay();
@@ -328,18 +320,14 @@ void my_display_code()
 
          if (ImGui::Button("Delete"))
         {
-            //Curve temp(clicked, gloT);
             CurveList.erase(CurveList.begin()+activeNumber);
             clicked = &CurveList[0];
             activeNumber = 0;
-            // *ptr = CurveList[CurveList.size()];
-
             glutSetWindow(mainWindow);
             glutPostRedisplay();
             glutSetWindow(guiWindow);
         }
         
-
         // ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
         if (ImGui::Button("Clear All"))
         {
@@ -349,9 +337,6 @@ void my_display_code()
             glutPostRedisplay();
             glutSetWindow(guiWindow);
         } // Buttons return true when clicked (most widgets return true when edited/activated)
-
-        // ImGui::SameLine();
-        // ImGui::Text("counter = %d", counter);
 
         ImGui::End();
     }
@@ -654,7 +639,7 @@ void display()
 }
 
 //Draws a single "pixel" given the current grid size
-//don't change anything in this for project 1
+
 void draw_pix(int x, int y)
 {
     glBegin(GL_POINTS);
@@ -663,7 +648,7 @@ void draw_pix(int x, int y)
     glEnd();
 }
 
-//gets called when a key is pressed on the keyboard
+//Gets called when a key is pressed on the keyboard
 void key(unsigned char ch, int x, int y)
 {
     switch (ch)
@@ -717,36 +702,13 @@ void reshape(int width, int height)
     //check for opengl errors
     check();
 }
-// void switchCurves(int number)
-// {
-//     std::vector<Coord> temp;
-//     for (int i = 0; i < CurveList[number].vertices.size(); i++)
-//     {
-//         temp.push_back(CurveList[number].vertices[i]);
-//     }
-//     std::cout << "after temp cp: " << temp.size() << std::endl;
-//     std::cout << "CurveList size: " << CurveList.size() << std::endl;
-//     int tempN = CurveList[number].n;
-//     CurveList.erase(CurveList.begin() + number);
-//     std::cout << "CurveList size after: " << CurveList.size() << std::endl;
-//     gloT = tempN;
-//     clicked.clear();
-//     for (int k = 0; k < temp.size(); k++)
-//     {
-//         clicked.push_back(temp[k]);
-//     }
-// }
-//gets called when a mouse button is pressed
+
 void mouse(int button, int state, int x, int y)
 {
-    //TODO: CHANGE THE MODE, instead just draw the lines!
-    //print the pixel location, and the grid location
-    //printf("MOUSE AT PIXEL: %d %d, GRID: %d %d\n", x, y, (int)(x / pixel_size), (int)((WIN_HEIGHT - y) / pixel_size));
+   
     float normx = (float)x / WIN_WIDTH;
     float normy = (WIN_HEIGHT - (float)y) / WIN_HEIGHT;
     int number = 0;
-    // std::cout << "Raw x and y: " << x << " " << y << std::endl;
-    // std::cout << "Normalized x and y: " << normx << " " << normy << std::endl;
     Coord newPoint(normx, normy);
     if (addMode)
     {
@@ -779,40 +741,10 @@ void mouse(int button, int state, int x, int y)
         //Function finds the nearest vertex
         int index = findNearest(clicked->vertices, newPoint);
         
-            // std::cout << "Modified " << clicked->vertices[index].x << " " << clicked->vertices[index].y << std::endl;
             clicked->vertices[index].x = newPoint.x;
             clicked->vertices[index].y = newPoint.y;
         
     }
-    // if (addMode)
-    // {
-    //     if (ptr->vertices.size() == 0)
-    //     {
-    //         clicked.push_back(newPoint);
-    //     }
-    //     else if (ptr->vertices.back().x != newPoint.x && ptr->vertices.back().y != newPoint.y)
-    //     {
-    //         ptr->vertices.push_back(newPoint);
-    //     }
-    // }
-    // if (deleteMode)
-    // {
-    //     //find the line & delete
-    //     int index = findNearest(ptr->vertices, newPoint);
-    //     std::cout << "Deleted " << ptr->vertices[index].x << " " << ptr->vertices[index].y << std::endl;
-    //     ptr->vertices.erase(ptr->vertices.begin() + index);
-    // }
-    // if (modifyMode)
-    // {
-    //     //Function finds the nearest vertex
-    //     int index = findNearest(ptr->vertices, newPoint);
-    //     if (modifyMode)
-    //     {
-    //         std::cout << "Modified " << ptr->vertices[index].x << " " << ptr->vertices[index].y << std::endl;
-    //         ptr->vertices[index].x = newPoint.x;
-    //         ptr->vertices[index].y = newPoint.y;
-    //     }
-    // }
 
     switch (button)
     {
@@ -832,8 +764,6 @@ void mouse(int button, int state, int x, int y)
     else
         printf("BUTTON DOWN\n"); //button clicked
 
-    //redraw the scene after mouse click
-    // drawLine(0,0,x/grid_width,y/grid_width);
     glutPostRedisplay();
 }
 int findNearest(std::vector<Coord> points, Coord cur)
@@ -856,24 +786,6 @@ int findNearest(std::vector<Coord> points, Coord cur)
 //gets called when the curser moves accross the scene
 void motion(int x, int y)
 {
-    //redraw the scene after mouse movement
-    //1-find nearest point
-    //2-set it to x,y
-    // Coord cur((float)x/WIN_WIDTH,(WIN_HEIGHT - (float)y) / WIN_HEIGHT);
-    // //Function finds the nearest vertex
-    // int index = findNearest(clicked, cur);
-    // if(modifyMode){
-    //     clicked[index].x = x;
-    //     clicked[index].y = y;
-    // }
-    // float normx = (float)x/WIN_WIDTH;
-    // float normy = (WIN_HEIGHT - (float)y) / WIN_HEIGHT;
-    // // std::cout << "Normalized x and y: " << normx << " " << normy << std::endl;
-    // Coord newPoint(normx,normy);
-    // int number = selectCurve(newPoint);
-
-    // std::cout<<"mouse at"<<x<<" "<<y<<std::endl;
-    // std::cout << std::flush;
     glutPostRedisplay();
 }
 
